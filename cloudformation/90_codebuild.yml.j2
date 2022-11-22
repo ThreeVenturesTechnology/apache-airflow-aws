@@ -1,0 +1,184 @@
+Description: "Creates resources for codebuild pipeline"
+
+
+Resources:
+  PipelineBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: {{ serviceName|lower }}-codebuild-artifacts-{{ ENVIRONMENT|lower }}
+  ReporterCodebuildRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: "Codebuild{{ ENVIRONMENT }}Role"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          -
+            Effect: "Allow"
+            Principal:
+              Service:
+                - "codepipeline.amazonaws.com"
+                - "codebuild.amazonaws.com"
+            Action:
+              - "sts:AssumeRole"
+      Policies:
+        -
+          PolicyName: "{{ serviceName }}-CodeBuildBuildPolicy-{{ ENVIRONMENT }}"
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              -
+                Effect: "Allow"
+                Action:
+                  - "codebuild:BatchGetBuilds"
+                  - "codebuild:StartBuild"
+                Resource:
+                  - "*"
+              -
+                Effect: "Allow"
+                Action:
+                  - "logs:CreateLogGroup"
+                  - "logs:CreateLogStream"
+                  - "logs:PutLogEvents"
+                Resource:
+                  - "*"
+              -
+                Effect: "Allow"
+                Action:
+                  - "s3:GetObject"
+                  - "s3:GetObjectVersion"
+                  - "s3:GetBucketVersioning"
+                  - "s3:PutObjectAcl"
+                  - "s3:PutObject"
+                Resource:
+                  - !Sub arn:aws:s3:::${PipelineBucket}
+                  - !Sub arn:aws:s3:::${PipelineBucket}/*
+              -
+                Effect: "Allow"
+                Action:
+                  - "secretsmanager:GetSecretValue"
+                Resource:
+                  - "*"
+
+  ReporterPipelineRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: "{{ serviceName }}-CodePipelineRole-{{ ENVIRONMENT }}"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          -
+            Effect: "Allow"
+            Principal:
+              Service:
+                - "s3.amazonaws.com"
+                - "codepipeline.amazonaws.com"
+                - "codebuild.amazonaws.com"
+            Action:
+              - "sts:AssumeRole"
+
+      Policies:
+        -
+          PolicyName: "{{ serviceName }}-PiplinePolicy-{{ ENVIRONMENT }}"
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              -
+                Effect: "Allow"
+                Action:
+                  - "s3:GetObject"
+                  - "s3:GetObjectVersion"
+                  - "s3:GetBucketVersioning"
+                  - "s3:PutObjectAcl"
+                  - "s3:PutObject"
+                Resource:
+                  - !Sub arn:aws:s3:::${PipelineBucket}
+                  - !Sub arn:aws:s3:::${PipelineBucket}/*
+              -
+                Effect: "Allow"
+                Action:
+                  - codestar-connections:UseConnection
+                Resource:
+                  - {{ github.codestarArn }}
+              -
+                Effect: "Allow"
+                Action:
+                  - "codebuild:BatchGetBuilds"
+                  - "codebuild:StartBuild"
+                Resource:
+                  - "*"
+  ReporterCodebuild:
+    Type: AWS::CodeBuild::Project
+    Properties:
+      Name: "codebuild-project-{{ serviceName }}-{{ ENVIRONMENT }}"
+      ServiceRole: !Ref ReporterCodebuildRole
+      Artifacts:
+        Type: "NO_ARTIFACTS"
+      Environment:
+        ComputeType: "BUILD_GENERAL1_SMALL"
+        Image: "aws/codebuild/standard:5.0"
+        PrivilegedMode: true
+        Type: "LINUX_CONTAINER"
+        EnvironmentVariables:
+          - Name: AWS_ACCESS_KEY_ID
+            Value: {% raw %} !Join ['', ['{{resolve:secretsmanager:', !ImportValue {% endraw %} secrets-CodebuildAccessKey-{{ serviceName }}-{{ ENVIRONMENT }} {% raw %}, ':SecretString:AccessKeyId}}' ]] {% endraw %}
+          - Name: AWS_SECRET_ACCESS_KEY
+            Value: {% raw %} !Join ['', ['{{resolve:secretsmanager:', !ImportValue {% endraw %} secrets-CodebuildAccessKey-{{ serviceName }}-{{ ENVIRONMENT }} {% raw %}, ':SecretString:SecretAccessKey}}' ]] {% endraw %}
+          - Name: AWS_DEFAULT_REGION
+            Value: "{{ AWS_REGION }}"
+          - Name: AWS_REGION
+            Value: "{{ AWS_REGION }}"
+          - Name: ENVIRONMENT
+            Value: "{{ ENVIRONMENT }}"
+          - Name: CODESTAR_ARN
+            Value: "{{ github.codestarArn }}"
+      Source:
+        Type: "GITHUB"
+        BuildSpec: "buildspec.{{ ENVIRONMENT }}.yml"
+        Location: {{ github.location }}
+
+  ReporterPipeline:
+    Type: AWS::CodePipeline::Pipeline
+    Properties:
+        RoleArn: !GetAtt ReporterPipelineRole.Arn
+        Name: "Codebuild-Pipeline-{{ serviceName }}-{{ ENVIRONMENT }}"
+        Stages:
+          -
+            Name: "Source"
+            Actions:
+              -
+                Name: "SourceAction"
+                ActionTypeId:
+                  Category: "Source"
+                  Owner: "AWS"
+                  Provider: "CodeStarSourceConnection"
+                  Version: "1"
+                OutputArtifacts:
+                  -
+                    Name: "source_output"
+                Configuration:
+                  ConnectionArn: {{ github.codestarArn }}
+                  BranchName: {{ github.branch }}
+                  FullRepositoryId: {{ github.fullRepositoryName }}
+          -
+            Name: "Build"
+            Actions:
+              -
+                Name: "BuildAction"
+                InputArtifacts:
+                  -
+                    Name: "source_output"
+                OutputArtifacts:
+                  -
+                    Name: "build_output"
+                ActionTypeId:
+                  Category: "Build"
+                  Owner: "AWS"
+                  Provider: "CodeBuild"
+
+                  Version: "1"
+                Configuration:
+                  ProjectName: !Ref ReporterCodebuild
+        ArtifactStore:
+          Location: !Ref PipelineBucket
+          Type: "S3"

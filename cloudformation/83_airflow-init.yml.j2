@@ -1,0 +1,89 @@
+Description: Creates Airflow Init Service
+
+Resources:
+  InitSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Security group for Airflow init
+      GroupName: "{{ serviceName }}-{{ ENVIRONMENT }}-init-security-group"
+      SecurityGroupEgress:
+        - CidrIp: 0.0.0.0/0
+          FromPort: 0
+          IpProtocol: -1
+          ToPort: 0
+      SecurityGroupIngress:
+        - CidrIp: "{{ service.cidrBlock }}/16"
+          FromPort: "{{ service.workers.port }}"
+          IpProtocol: tcp
+          ToPort: "{{ service.workers.port }}"
+      VpcId: !ImportValue "network-VpcId-{{ serviceName }}-{{ ENVIRONMENT }}"
+      Tags:
+        - Key: Name
+          Value: "{{ serviceName }}-{{ ENVIRONMENT }}-init-security-group"
+
+  InitTaskDefinition:
+    Type: AWS::ECS::TaskDefinition
+    Properties:
+      Cpu: "{{ service.workers.cpu }}"
+      Memory: "{{ service.workers.memory }}"
+      ExecutionRoleArn: !ImportValue iam-ECSExecutionTaskRoleArn-{{ serviceName }}-{{ ENVIRONMENT }}
+      TaskRoleArn: !ImportValue iam-ECSTaskRoleArn-{{ serviceName }}-{{ ENVIRONMENT }}
+      Family: "{{ serviceName }}-{{ ENVIRONMENT }}-init-task-definition"
+      NetworkMode: awsvpc
+      ContainerDefinitions:
+        - Name: "{{ serviceName }}-{{ ENVIRONMENT }}-init"
+          Image: !Sub
+            - "${AWS::AccountId}.dkr.ecr.{{ AWS_REGION }}.amazonaws.com/${ecr_repository}:latest"
+            - ecr_repository: !ImportValue ecr-AirflowDockerRepositoryName-{{ serviceName }}-{{ ENVIRONMENT }}
+          Essential: true
+          EntryPoint:
+            - /bin/bash
+          Command:
+                  - -c
+                  - |
+                    /entrypoint airflow db upgrade
+                    {{ initial_command | indent( width=20) }}
+                    exec /entrypoint airflow users create --username $WWW_ADMIN --firstname admin --lastname admin --email $WWW_EMAIL -r Admin --password $WWW_PASSWORD
+
+          Environment:
+            - Name: WWW_ADMIN
+              Value: "{{ www.wwwAdmin }}"
+            - Name: WWW_EMAIL
+              Value: "{{ www.wwwEmail }}"
+            - Name: WWW_PASSWORD
+              Value: "{{ www.wwwPassword }}"
+            - Name: AIRFLOW__CORE__DEFAULT_TIMEZONE
+              Value: "{{ timeZone }}"
+            - Name: AIRFLOW__CORE__SQL_ALCHEMY_CONN
+              Value: {% raw %}
+               !Join ['', ['postgresql+psycopg2://', '{{resolve:secretsmanager:', !ImportValue {% endraw %} secrets-MetadataDBSecretId-{{ serviceName }}-{{ ENVIRONMENT }} {% raw %},
+                    ':SecretString:username}}', ':', '{{resolve:secretsmanager:', !ImportValue {% endraw %} secrets-MetadataDBSecretId-{{ serviceName }}-{{ ENVIRONMENT }} {% raw %},
+                    ':SecretString:password}}', '@', !ImportValue {% endraw %} database-MetadataDBInstanceHost-{{ serviceName }}-{{ ENVIRONMENT }} {% raw %}, '/',
+                    "airflow" ]]
+                {% endraw %}
+            - Name: REDIS_HOST
+              Value: !ImportValue redis-CeleryBackendHost-{{ serviceName }}-{{ ENVIRONMENT }}
+            - Name: REDIS_PORT
+              Value: !ImportValue redis-CeleryBackendPort-{{ serviceName }}-{{ ENVIRONMENT }}
+            - Name: AIRFLOW__CORE__EXECUTOR
+              Value: CeleryExecutor
+            - Name: AIRFLOW_BASE_URL
+              Value: "{{ service.baseUrl }}"
+            - Name: ENABLE_REMOTE_LOGGING
+              Value: False
+            - Name: STAGE
+              Value: "{{ ENVIRONMENT }}"
+            - Name: FERNET_KEY
+              Value: {% raw %} !Join ['', ['{{resolve:secretsmanager:', !ImportValue {% endraw %} secrets-AirflowFernetKeySecretId-{{ serviceName }}-{{ ENVIRONMENT }} {% raw %}, ':SecretString:fernet_key}}' ]] {% endraw %}
+            {{ custom_env_variables  | indent( width=12) }}
+
+          User: airflow
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-group: !ImportValue "cloudwatch-AirflowECSLogGroupName-{{ serviceName }}-{{ ENVIRONMENT }}"
+              awslogs-region: "{{ AWS_REGION }}"
+              awslogs-stream-prefix: init
+      Tags:
+        - Key: Name
+          Value: "{{ serviceName }}-{{ ENVIRONMENT }}-init-task-definition"

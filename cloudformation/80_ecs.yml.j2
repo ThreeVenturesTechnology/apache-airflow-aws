@@ -1,0 +1,21 @@
+Description: Creates ECS resources
+
+Resources:
+  AirflowECSCluster:
+    Type: AWS::ECS::Cluster
+    Properties:
+      ClusterName: "{{ serviceName }}-{{ ENVIRONMENT }}-ecs-cluster"
+      Tags:
+        - Key: Name
+          Value: "{{ serviceName }}-{{ ENVIRONMENT }}-ecs-cluster"
+
+Outputs:
+  AirflowECSClusterArn:
+    Value: !GetAtt AirflowECSCluster.Arn
+    Export:
+      Name: "ecs-AirflowECSClusterArn-{{ serviceName }}-{{ ENVIRONMENT }}"
+
+  AirflowECSClusteId:
+    Value: !Ref AirflowECSCluster
+    Export:
+      Name: "ecs-AirflowECSClusterId-{{ serviceName }}-{{ ENVIRONMENT }}"

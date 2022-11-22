@@ -1,0 +1,71 @@
+Description: Creates IAM Resources
+
+Resources:
+  ECSExecutionTaskRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: "{{ serviceName }}-{{ ENVIRONMENT }}-ecs-execution-task-role"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          -
+            Effect: "Allow"
+            Principal:
+              Service:
+                - "ecs-tasks.amazonaws.com"
+            Action:
+              - "sts:AssumeRole"
+      Policies:
+        -
+          PolicyName: "{{ serviceName }}-{{ ENVIRONMENT }}-ECSExecutionTaskRolePolicy"
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              -
+                Effect: "Allow"
+                Action:
+                  - "ecr:GetAuthorizationToken"
+                  - "ecr:BatchCheckLayerAvailability"
+                  - "ecr:GetDownloadUrlForLayer"
+                  - "ecr:BatchGetImage"
+                Resource: "*"
+              -
+                Effect: "Allow"
+                Action:
+                  - "logs:CreateLogStream"
+                  - "logs:PutLogEvents"
+                Resource: "*"
+  ECSTaskRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: "{{ serviceName }}-{{ ENVIRONMENT }}-ecs-task-role"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: "Allow"
+            Principal:
+              Service:
+                - "ecs-tasks.amazonaws.com"
+            Action:
+              - "sts:AssumeRole"
+      Policies:
+        -
+          PolicyName: "{{ serviceName }}-{{ ENVIRONMENT }}-ECSTaskRolePolicy"
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              -
+                Effect: "Allow"
+                Action:
+                  - "secretsmanager:GetSecretValue"
+                Resource:
+                  - "*"
+Outputs:
+  ECSExecutionTaskRoleARN:
+    Value: !GetAtt ECSExecutionTaskRole.Arn
+    Export:
+      Name: "iam-ECSExecutionTaskRoleArn-{{ serviceName }}-{{ ENVIRONMENT }}"
+  ECSTaskRoleARN:
+    Value: !GetAtt ECSTaskRole.Arn
+    Export:
+      Name: "iam-ECSTaskRoleArn-{{ serviceName }}-{{ ENVIRONMENT }}"

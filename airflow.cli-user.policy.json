@@ -1,0 +1,48 @@
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Sid": "VisualEditor0",
+            "Effect": "Allow",
+            "Action": [
+                "cloudformation:*",
+                "kms:*",
+                "s3:*",
+                "secretsmanager:*",
+                "rds:*",
+                "ec2:*",
+                "ecr:*",
+                "elasticloadbalancing:*",
+                "cloudwatch:*",
+                "autoscaling:*",
+                "application-autoscaling:*",
+                "pi:*",
+                "iam:*",
+                "logs:*",
+                "sns:*",
+                "s3:*",
+                "ecs:*",
+                "codebuild:*",
+                "organizations:DescribeAccount",
+                "organizations:DescribeOrganization",
+                "organizations:DescribeOrganizationalUnit",
+                "organizations:DescribePolicy",
+                "organizations:ListChildren",
+                "organizations:ListParents",
+                "organizations:ListPoliciesForTarget",
+                "organizations:ListRoots",
+                "organizations:ListPolicies",
+                "organizations:ListTargetsForPolicy",
+                "elasticache:*",
+                "ssm:*",
+                "cloudtrail:*",
+                "codedeploy:*",
+                "codepipeline:*",
+                "codecommit:*",
+                "codestar-connections:*",
+                "codestar-notifications:*"
+            ],
+            "Resource": "*"
+        }
+    ]
+}
