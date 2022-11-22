@@ -17,6 +17,10 @@ Resources:
           FromPort: "{{ service.port }}"
           IpProtocol: tcp
           ToPort: "{{ service.port }}"
+        - CidrIp: "{{ ip }}"
+          FromPort: 443
+          IpProtocol: tcp
+          ToPort: 443
       {% endfor %}
       VpcId: !ImportValue "network-VpcId-{{ serviceName }}-{{ ENVIRONMENT }}"
       Tags:
@@ -144,7 +148,33 @@ Resources:
       Port: "{{ service.port }}"
       Protocol: HTTP
 
+  {% if not certificate %}
+  WebserverAlbListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      DefaultActions:
+        - TargetGroupArn: !Ref WebserverAlbTargetGroup
+          Type: forward
+      LoadBalancerArn: !Ref WebserverAlb
+      Port: "{{ service.port }}"
+      Protocol: HTTP
+
+  {% endif %}
+
   {% if certificate %}
+  WebserverAlbListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      DefaultActions:
+        - Type: redirect
+          RedirectConfig:
+            Protocol: "HTTPS"
+            Port: 443
+            StatusCode: HTTP_301
+      LoadBalancerArn: !Ref WebserverAlb
+      Port: "{{ service.port }}"
+      Protocol: HTTP
+
   WebserverAlbListenerSSL:
     Type: AWS::ElasticLoadBalancingV2::Listener
     Properties:
@@ -158,7 +188,6 @@ Resources:
         - CertificateArn: {{ certificate}}
 
   {% endif %}
-
 
 
   WebserverEcsService:
