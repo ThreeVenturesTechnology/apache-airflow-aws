@@ -1,0 +1,15 @@
+version: 0.2
+env:
+  shell: bash
+phases:
+    install:
+      runtime-versions:
+        python: 3.8
+      commands:
+        - echo "Environment ${ENVIRONMENT}"
+        - pip install -r requirements.txt
+    build:
+      commands:
+        - make airflow-push-image
+      finally:
+        - echo 'Finished'

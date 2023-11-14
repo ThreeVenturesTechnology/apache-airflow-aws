@@ -53,7 +53,7 @@ def get_formatted_dotenv() -> str:
     config = dotenv_values(".env")
     yml_config = ""
     for key in config:
-        yml_config += f'- Name: {key}\n  Value: {config[key]}'
+        yml_config += f'- Name: {key}\n  Value: {config[key]}\n'
     return yml_config
 
 def render_template(template) -> str:
@@ -177,6 +177,9 @@ def run_init_task():
     cluster_name = f'{service_config["serviceName"]}-{environment}-ecs-cluster'
     subnets = ec2.describe_subnets()
     task_definition = f'{service_config["serviceName"]}-{environment}-init-task-definition'
+    scheduler_service_name = f'{service_config["serviceName"]}-{environment}-scheduler'
+    webserver_service_name = f'{service_config["serviceName"]}-{environment}-webserver'
+    workers_service_name = f'{service_config["serviceName"]}-{environment}-workers'
     filtered_subnets = []
     for subnet in subnets['Subnets']:
         counter = 0
@@ -192,3 +195,22 @@ def run_init_task():
                  platformVersion='LATEST', networkConfiguration={'awsvpcConfiguration': {'subnets': filtered_subnets,
                                                                                          'assignPublicIp': 'ENABLED'}}
                  )
+    update_services_desired_count()
+
+
+def update_services_desired_count():
+    set_env_variables()
+    service_config = get_service_variables()
+    ecs = boto3.client('ecs')
+    environment = os.getenv('ENVIRONMENT')
+
+    cluster_name = f'{service_config["serviceName"]}-{environment}-ecs-cluster'
+    scheduler_service_name = f'{service_config["serviceName"]}-{environment}-scheduler'
+    webserver_service_name = f'{service_config["serviceName"]}-{environment}-webserver'
+    workers_service_name = f'{service_config["serviceName"]}-{environment}-workers'
+    ecs.update_service(cluster=cluster_name, service=scheduler_service_name,
+                       desiredCount=service_config["service"]["scheduler"]["desiredCount"])
+    ecs.update_service(cluster=cluster_name, service=webserver_service_name,
+                       desiredCount=service_config["service"]["webserver"]["desiredCount"])
+    ecs.update_service(cluster=cluster_name, service=workers_service_name,
+                       desiredCount=service_config["service"]["workers"]["desiredCount"])

@@ -41,6 +41,7 @@ Resources:
           Command:
                   - -c
                   - |
+                    /entrypoint airflow db init
                     /entrypoint airflow db upgrade
                     {{ initial_command | indent( width=20) }}
                     exec /entrypoint airflow users create --username $WWW_ADMIN --firstname admin --lastname admin --email $WWW_EMAIL -r Admin --password $WWW_PASSWORD
