@@ -1,0 +1,22 @@
+version: 0.2
+env:
+  shell: bash
+# Available env variables list:
+#   AWS_ACCESS_KEY_ID
+#   AWS_SECRET_ACCESS_KEY
+#   AWS_DEFAULT_REGION
+#   AWS_REGION
+#   ENVIRONMENT
+#   CODESTAR_ARN
+phases:
+    install:
+      runtime-versions:
+        python: 3.8
+      commands:
+        - echo "Environment ${ENVIRONMENT}"
+        - pip install -r requirements.txt
+    build:
+      commands:
+        - make airflow-push-image
+      finally:
+        - echo 'Finished'

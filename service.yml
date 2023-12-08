@@ -1,6 +1,6 @@
 default:
   #Service name of Your app, it can not contain airflow in its name
-  serviceName: myService
+  serviceName: dataPlatform
   owner: threeventures
   # AWS Certificate Manager (ACM) to allow https
   certificate:
@@ -11,14 +11,14 @@ default:
     wwwEmail: example@example.com
 
   github:
-    fullRepositoryName:
-    location:
+    fullRepositoryName: 
+    location: https://github.com/robynp/apache-airflow-aws
     codestarArn:
-    branch: example
+    branch: rp-dev
 
   service:
     logGroupName: airflow/ecs/fargate
-    cidrBlock: 10.0.0.0
+    cidrBlock: 10.36.0.0
     baseUrl: http://localhost:8080
     port: 80
     scheduler:
@@ -71,13 +71,13 @@ default:
 
   publicSubnet:
     1:
-      cidrBlock: 10.0.1.0/24
+      cidrBlock: 10.36.24.0/24
       availabilityZone: a
     2:
-      cidrBlock: 10.0.2.0/24
+      cidrBlock: 10.36.25.0/24
       availabilityZone: b
     3:
-      cidrBlock: 10.0.3.0/24
+      cidrBlock: 10.36.26.0/24
       availabilityZone: c
 
   whitelistedIPs:
