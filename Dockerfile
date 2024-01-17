@@ -1,4 +1,4 @@
-FROM apache/airflow:2.3.4
+FROM apache/airflow:2.5.3
 COPY requirements.txt .
 COPY utils.py .
 COPY ./dags /opt/airflow/dags

@@ -13,6 +13,7 @@ from utils import create_default_tags
 from utils import create_fernet_key
 from utils import get_aws_account_id
 from utils import get_service_variables
+from utils import update_services_desired_count
 
 ENVIRONMENT = os.environ['ENVIRONMENT']
 os.environ['AWS_DEFAULT_REGION'] = os.environ['AWS_REGION']
@@ -88,6 +89,7 @@ def update_stack(stack_name, template_body, **kwargs):
             TemplateBody=template_body,
             Tags=create_default_tags()
         )
+        update_services_desired_count()
 
     except ClientError as e:
         if 'No updates are to be performed' in str(e):
@@ -200,11 +202,39 @@ def update_ecs_service(airflow_service):
 
 def restart_airflow_ecs():
     """
-    Responsible for restarting ecs
+    Responsible for restarting ecs, but first checks if ecs services are running
     """
-    update_ecs_service('workers')
-    update_ecs_service('scheduler')
-    update_ecs_service('webserver')
+    cluster_name = f'{service_config["serviceName"]}-{ENVIRONMENT}-ecs-cluster'
+    scheduler_service_name = f'{service_config["serviceName"]}-{ENVIRONMENT}-scheduler'
+    webserver_service_name = f'{service_config["serviceName"]}-{ENVIRONMENT}-webserver'
+    workers_service_name = f'{service_config["serviceName"]}-{ENVIRONMENT}-workers'
+
+    services = ecs_client.describe_services(
+        cluster=cluster_name,
+        services=[
+            scheduler_service_name,
+            webserver_service_name,
+            workers_service_name
+        ]
+    )
+
+    deployed = {
+        scheduler_service_name: False,
+        webserver_service_name: False,
+        workers_service_name: False
+    }
+    if services and 'services' in services:
+        for service in services['services']:
+            deployed[service['serviceName']] = False
+            if service['runningCount'] > 0:
+                deployed[service['serviceName']] = True
+
+    if deployed[scheduler_service_name]:
+        update_ecs_service('scheduler')
+    if deployed[workers_service_name]:
+        update_ecs_service('workers')
+    if deployed[webserver_service_name]:
+        update_ecs_service('webserver')
 
 
 def log_outputs():

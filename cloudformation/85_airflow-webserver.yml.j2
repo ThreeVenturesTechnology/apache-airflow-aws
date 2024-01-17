@@ -198,7 +198,7 @@ Resources:
       Cluster: !ImportValue ecs-AirflowECSClusterArn-{{ serviceName }}-{{ ENVIRONMENT }}
       TaskDefinition: !Ref WebserverTaskDefinition
       LaunchType: FARGATE
-      DesiredCount: "{{ service.webserver.desiredCount }}"
+      DesiredCount: "0"
       NetworkConfiguration:
         AwsvpcConfiguration:
           AssignPublicIp: ENABLED

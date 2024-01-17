@@ -99,7 +99,7 @@ Resources:
       Cluster: !ImportValue ecs-AirflowECSClusterArn-{{ serviceName }}-{{ ENVIRONMENT }}
       TaskDefinition: !Ref WorkerTaskDefinition
       LaunchType: FARGATE
-      DesiredCount: "{{ service.workers.desiredCount }}"
+      DesiredCount: "0"
       NetworkConfiguration:
         AwsvpcConfiguration:
           AssignPublicIp: ENABLED

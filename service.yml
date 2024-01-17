@@ -3,18 +3,18 @@ default:
   serviceName: myService
   owner: threeventures
   # AWS Certificate Manager (ACM) to allow https
-  certificate:
+  certificate: arn:aws:acm:us-west-2:048709791643:certificate/d537d02b-5f4e-4c95-8b25-1a2d6d42c3b0
   timeZone: US/Pacific
   www:
     wwwAdmin: airflow-admin
     wwwPassword: 12345678!@#$%
-    wwwEmail: example@example.com
+    wwwEmail: tleebok@threeventures.com
 
   github:
-    fullRepositoryName:
-    location:
-    codestarArn:
-    branch: example
+    fullRepositoryName: ThreeVenturesTechnology/apache-airflow-aws
+    location: https://github.com/ThreeVenturesTechnology/apache-airflow-aws.git
+    codestarArn: arn:aws:codestar-connections:us-west-2:048709791643:connection/a27bc755-ec3b-4787-a02d-7f32c237dc33
+    branch: fix-creating-stack
 
   service:
     logGroupName: airflow/ecs/fargate

@@ -88,7 +88,7 @@ Resources:
       Cluster: !ImportValue ecs-AirflowECSClusterArn-{{ serviceName }}-{{ ENVIRONMENT }}
       TaskDefinition: !Ref SchedulerTaskDefinition
       LaunchType: FARGATE
-      DesiredCount: "{{ service.scheduler.desiredCount }}"
+      DesiredCount: "0"
       NetworkConfiguration:
         AwsvpcConfiguration:
           AssignPublicIp: ENABLED
