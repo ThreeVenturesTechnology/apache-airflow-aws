@@ -1,7 +1,7 @@
-apache-airflow==2.7.3
-boto3==1.24.63
-cryptography==41.0.6
-jinja2==3.1.2
-docker==6.0.1
-python-dotenv==0.21.0
-PyYaml==6.0
+apache-airflow==2.10.2
+boto3==1.35.25
+cryptography==43.0.1
+jinja2==3.1.4
+docker==7.1.0
+python-dotenv==1.0.1
+PyYaml==6.0.2
